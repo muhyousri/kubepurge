@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- v1_purgepolicy.yaml
+- v1_purgestatus.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

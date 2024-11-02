@@ -1,0 +1,9 @@
+apiVersion: kubepurge.xyz/v1
+kind: PurgePolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: kubepurge
+    app.kubernetes.io/managed-by: kustomize
+  name: purgepolicy-sample
+spec:
+  # TODO(user): Add fields here

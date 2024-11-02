@@ -1,0 +1,23 @@
+# permissions for end users to view purgepolicies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kubepurge
+    app.kubernetes.io/managed-by: kustomize
+  name: purgepolicy-viewer-role
+rules:
+- apiGroups:
+  - kubepurge.xyz
+  resources:
+  - purgepolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kubepurge.xyz
+  resources:
+  - purgepolicies/status
+  verbs:
+  - get
