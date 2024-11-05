@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	kubepurgexyzv1 "github.com/muhyousri/kubepurge/api/v1"
+	"github.com/robfig/cron/v3"
 )
 
 // PurgePolicyReconciler reconciles a PurgePolicy object
@@ -37,19 +39,43 @@ type PurgePolicyReconciler struct {
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the PurgePolicy object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
+
+// TODO 2,3 fetch & Delete all resources except resources with a specific label
+func Purge_resources(input string) (output string, err error) {
+	output = input
+	return output, nil
+}
+
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
+	var purgepolicy kubepurgexyzv1.PurgePolicy
 
-	// TODO(user): your logic here
+	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
+	if err != nil {
+
+	}
+	schedule := purgepolicy.Spec.Schedule
+	resources := purgepolicy.Spec.Resources
+	targetNamespace := purgepolicy.Spec.TargetNamespace
+
+	fmt.Printf("schedule is %s, resource are %s, targetNamespace is %s", schedule, resources, targetNamespace)
+
+	//
+	// TODO 1- process cron format and compare with current date [Done]
+	c := cron.New()
+	c.AddFunc(schedule, func() {
+		result, err := Purge_resources(purgepolicy.Name)
+		if err != nil {
+			fmt.Println("error")
+		} else {
+			fmt.Printf("%v", result)
+		}
+	})
+	c.Start()
+
+	// TODO 4- create or patch a purge status
 
 	return ctrl.Result{}, nil
 }
