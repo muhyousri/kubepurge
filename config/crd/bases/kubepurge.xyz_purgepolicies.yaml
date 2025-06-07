@@ -40,15 +40,18 @@ spec:
             description: PurgePolicySpec defines the desired state of PurgePolicy.
             properties:
               resources:
+                description: Resources is a list of resource types to purge (e.g.,
+                  "pods", "deployments")
                 items:
                   type: string
+                minItems: 1
                 type: array
               schedule:
+                description: Schedule in cron format for when to run purge operations
                 type: string
               targetNamespace:
-                description: |-
-                  Foo is an example field of PurgePolicy. Edit purgepolicy_types.go to remove/update
-                  Foo string `json:"foo,omitempty"`
+                description: TargetNamespace is the namespace to target for resource
+                  cleanup
                 type: string
             required:
             - resources
