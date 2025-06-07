@@ -1,0 +1,90 @@
+name: 🔒 Security Issue
+description: Report a non-sensitive security concern or question
+title: "[SECURITY] "
+labels: ["security", "triage"]
+assignees:
+  - muhyousri
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ IMPORTANT**: Do NOT use this form for reporting security vulnerabilities!
+        
+        For security vulnerabilities, please follow our [responsible disclosure process](../SECURITY.md).
+        
+        Use this form for:
+        - Security best practices questions
+        - Documentation improvements
+        - Non-sensitive security enhancements
+        - General security discussions
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of security issue is this?
+      options:
+        - Security Best Practices Question
+        - Documentation Enhancement
+        - Security Feature Request
+        - Configuration Question
+        - Other Security Topic
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How would you rate the severity of this issue?
+      options:
+        - Low - General question or enhancement
+        - Medium - Important security improvement
+        - High - Significant security concern (but not a vulnerability)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear description of the security concern or question
+      placeholder: Describe the security issue, best practice question, or enhancement request...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant environment details
+      placeholder: |
+        - Kubernetes version:
+        - kubepurge version:
+        - Deployment method:
+        - Additional context:
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional context, configuration, or details
+      placeholder: Add any other context about the security issue here...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have read the [Security Policy](../SECURITY.md)
+          required: true
+        - label: This is NOT a security vulnerability (if it is, I will use responsible disclosure)
+          required: true
+        - label: I have searched existing issues to avoid duplicates
+          required: true

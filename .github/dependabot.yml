@@ -1,0 +1,95 @@
+version: 2
+updates:
+  # Go modules
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    assignees:
+      - "muhyousri"
+    reviewers:
+      - "muhyousri"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "go"
+    groups:
+      kubernetes-deps:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing-deps:
+        patterns:
+          - "github.com/onsi/ginkgo/*"
+          - "github.com/onsi/gomega"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    assignees:
+      - "muhyousri"
+    reviewers:
+      - "muhyousri"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    assignees:
+      - "muhyousri"
+    reviewers:
+      - "muhyousri"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      actions-core:
+        patterns:
+          - "actions/*"
+        update-types:
+          - "minor"
+          - "patch"
+      docker-actions:
+        patterns:
+          - "docker/*"
+        update-types:
+          - "minor"
+          - "patch"
+      security-actions:
+        patterns:
+          - "github/codeql-action"
+          - "aquasecurity/trivy-action"
+          - "securecodewarrior/github-action-gosec"
+          - "anchore/sbom-action"
+        update-types:
+          - "minor"
+          - "patch"
