@@ -29,7 +29,7 @@ type PurgeStatusSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of PurgeStatus. Edit purgestatus_types.go to remove/update
-	//Foo string `json:"foo,omitempty"`
+	// Foo string `json:"foo,omitempty"`
 
 	CleanedNamespace string            `json:"cleanedNamespace"`
 	LastPurgeTime    metav1.Time       `json:"lastPurgeTime"`
