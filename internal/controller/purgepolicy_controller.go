@@ -67,18 +67,13 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	resources := purgepolicy.Spec.Resources
 	targetNamespace := purgepolicy.Spec.TargetNamespace
 
-	fmt.Printf("schedule is %s, resource are %s, targetNamespace is %s", schedule, resources, targetNamespace)
+	log.FromContext(ctx).Info("Processing PurgePolicy", "schedule", schedule, "resources", resources, "targetNamespace", targetNamespace)
 
-	//
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
 	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			fmt.Println("error")
-		} else {
-			fmt.Printf("%v", result)
-		}
+		log.FromContext(ctx).Info("Executing purge for policy", "policy", purgepolicy.Name)
+		// TODO: Implement actual resource purging logic
 	})
 	c.Start()
 
