@@ -86,12 +86,8 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	c := cron.New()
 	_, err = c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			logger.Error(err, "Failed to purge resources")
-		} else {
-			logger.Info("Purge operation completed", "result", result)
-		}
+		logger.Info("Executing purge for policy", "policy", purgepolicy.Name)
+		// TODO: Implement actual resource purging logic
 	})
 	
 	if err != nil {
