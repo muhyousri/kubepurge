@@ -19,8 +19,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,10 +46,96 @@ type PurgePolicyReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 
-// TODO 2,3 fetch & Delete all resources except resources with a specific label
-func Purge_resources(input string) (output string, err error) {
-	output = input
-	return output, nil
+func (r *PurgePolicyReconciler) purgeResources(ctx context.Context, policy *kubepurgexyzv1.PurgePolicy) map[string]string {
+	logger := log.FromContext(ctx)
+	purgedResources := make(map[string]string)
+
+	for _, resourceType := range policy.Spec.Resources {
+		switch strings.ToLower(resourceType) {
+		case "pods":
+			count, err := r.deleteResourcesByType(ctx, policy.Spec.TargetNamespace, "v1", "Pod")
+			if err != nil {
+				logger.Error(err, "Failed to delete pods")
+				continue
+			}
+			purgedResources["pods"] = fmt.Sprintf("%d", count)
+
+		case "deployments":
+			count, err := r.deleteResourcesByType(ctx, policy.Spec.TargetNamespace, "apps/v1", "Deployment")
+			if err != nil {
+				logger.Error(err, "Failed to delete deployments")
+				continue
+			}
+			purgedResources["deployments"] = fmt.Sprintf("%d", count)
+
+		case "services":
+			count, err := r.deleteResourcesByType(ctx, policy.Spec.TargetNamespace, "v1", "Service")
+			if err != nil {
+				logger.Error(err, "Failed to delete services")
+				continue
+			}
+			purgedResources["services"] = fmt.Sprintf("%d", count)
+
+		case "configmaps":
+			count, err := r.deleteResourcesByType(ctx, policy.Spec.TargetNamespace, "v1", "ConfigMap")
+			if err != nil {
+				logger.Error(err, "Failed to delete configmaps")
+				continue
+			}
+			purgedResources["configmaps"] = fmt.Sprintf("%d", count)
+
+		case "secrets":
+			count, err := r.deleteResourcesByType(ctx, policy.Spec.TargetNamespace, "v1", "Secret")
+			if err != nil {
+				logger.Error(err, "Failed to delete secrets")
+				continue
+			}
+			purgedResources["secrets"] = fmt.Sprintf("%d", count)
+		}
+	}
+
+	return purgedResources
+}
+
+func (r *PurgePolicyReconciler) deleteResourcesByType(ctx context.Context, namespace, apiVersion, kind string) (int, error) {
+	gv, err := schema.ParseGroupVersion(apiVersion)
+	if err != nil {
+		return 0, err
+	}
+
+	gvk := schema.GroupVersionKind{
+		Group:   gv.Group,
+		Version: gv.Version,
+		Kind:    kind,
+	}
+
+	list := &metav1.PartialObjectMetadataList{}
+	list.SetGroupVersionKind(gvk)
+
+	err = r.List(ctx, list, client.InNamespace(namespace))
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, item := range list.Items {
+		if item.Labels["kubepurge.xyz/exclude"] == "true" {
+			continue
+		}
+
+		obj := &metav1.PartialObjectMetadata{}
+		obj.SetGroupVersionKind(gvk)
+		obj.SetNamespace(item.Namespace)
+		obj.SetName(item.Name)
+
+		err := r.Delete(ctx, obj)
+		if err != nil && !errors.IsNotFound(err) {
+			return count, err
+		}
+		count++
+	}
+
+	return count, nil
 }
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -54,7 +144,7 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
 	if err != nil {
-
+		return ctrl.Result{}, err
 	}
 	schedule := purgepolicy.Spec.Schedule
 	resources := purgepolicy.Spec.Resources
@@ -65,14 +155,13 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
-	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			fmt.Println("error")
-		} else {
-			fmt.Printf("%v", result)
-		}
+	_, err = c.AddFunc(schedule, func() {
+		result := r.purgeResources(ctx, &purgepolicy)
+		fmt.Printf("%v", result)
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	c.Start()
 
 	// TODO 4- create or patch a purge status
