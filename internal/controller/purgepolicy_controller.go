@@ -20,7 +20,10 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,11 +45,6 @@ type PurgePolicyReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 
-// TODO 2,3 fetch & Delete all resources except resources with a specific label
-func Purge_resources(input string) (output string, err error) {
-	output = input
-	return output, nil
-}
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
@@ -54,7 +52,7 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
 	if err != nil {
-
+		return ctrl.Result{}, err
 	}
 	schedule := purgepolicy.Spec.Schedule
 	resources := purgepolicy.Spec.Resources
@@ -65,19 +63,50 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
-	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			fmt.Println("error")
-		} else {
-			fmt.Printf("%v", result)
-		}
+	_, err = c.AddFunc(schedule, func() {
+		// TODO: Implement resource purging logic
+		fmt.Printf("Purging resources for policy: %s", purgepolicy.Name)
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	c.Start()
 
-	// TODO 4- create or patch a purge status
-
 	return ctrl.Result{}, nil
+}
+
+func (r *PurgePolicyReconciler) createOrUpdatePurgeStatus(ctx context.Context, policy *kubepurgexyzv1.PurgePolicy, purgedResources map[string]string) error {
+	statusName := fmt.Sprintf("%s-status", policy.Name)
+	
+	var purgeStatus kubepurgexyzv1.PurgeStatus
+	err := r.Get(ctx, types.NamespacedName{Name: statusName, Namespace: policy.Namespace}, &purgeStatus)
+	
+	if err != nil && errors.IsNotFound(err) {
+		purgeStatus = kubepurgexyzv1.PurgeStatus{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      statusName,
+				Namespace: policy.Namespace,
+				Labels: map[string]string{
+					"kubepurge.xyz/policy": policy.Name,
+				},
+			},
+			Spec: kubepurgexyzv1.PurgeStatusSpec{
+				CleanedNamespace: policy.Spec.TargetNamespace,
+				LastPurgeTime:    metav1.Now(),
+				PurgedResources:  purgedResources,
+			},
+		}
+		
+		return r.Create(ctx, &purgeStatus)
+	} else if err != nil {
+		return err
+	}
+	
+	purgeStatus.Spec.LastPurgeTime = metav1.Now()
+	purgeStatus.Spec.PurgedResources = purgedResources
+	purgeStatus.Spec.CleanedNamespace = policy.Spec.TargetNamespace
+	
+	return r.Update(ctx, &purgeStatus)
 }
 
 // SetupWithManager sets up the controller with the Manager.
