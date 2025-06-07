@@ -38,6 +38,13 @@ type PurgePolicyReconciler struct {
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/finalizers,verbs=update
+// +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgestatuses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;delete
+// +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;delete
 
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile

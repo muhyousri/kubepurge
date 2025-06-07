@@ -5,9 +5,30 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - pods
+  - secrets
+  - services
+  verbs:
+  - delete
+  - get
+  - list
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - replicasets
+  verbs:
+  - delete
+  - get
+  - list
+- apiGroups:
   - kubepurge.xyz
   resources:
   - purgepolicies
+  - purgestatuses
   verbs:
   - create
   - delete
