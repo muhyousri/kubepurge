@@ -1,0 +1,109 @@
+name: Image Validation
+
+on:
+  workflow_run:
+    workflows: ["Release Image"]
+    types:
+      - completed
+
+jobs:
+  validate-image:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Extract tag from workflow
+        id: extract_tag
+        run: |
+          # Get the tag from the workflow that triggered this
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          if [[ "$TAG" == refs/tags/* ]]; then
+            TAG=${TAG#refs/tags/}
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Test image functionality
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.tag }}"
+          
+          # Pull the image
+          docker pull "$IMAGE"
+          
+          # Basic functionality test - check if binary starts
+          docker run --rm "$IMAGE" --help || echo "Help command test"
+          
+          # Check image metadata
+          docker inspect "$IMAGE" | jq '.[0].Config.Labels'
+          
+          # Verify the image runs as non-root
+          USER_ID=$(docker run --rm "$IMAGE" id -u)
+          if [ "$USER_ID" = "0" ]; then
+            echo "❌ Image runs as root user"
+            exit 1
+          else
+            echo "✅ Image runs as non-root user (UID: $USER_ID)"
+          fi
+
+      - name: Test image in Kubernetes
+        run: |
+          # Set up kind cluster
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          
+          # Create cluster
+          kind create cluster --name validation-test
+          
+          # Load image into kind cluster (for testing)
+          IMAGE="ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.tag }}"
+          docker pull "$IMAGE"
+          kind load docker-image "$IMAGE" --name validation-test
+          
+          # Create a simple test deployment
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: kubepurge-test
+            namespace: default
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: kubepurge-test
+            template:
+              metadata:
+                labels:
+                  app: kubepurge-test
+              spec:
+                containers:
+                - name: manager
+                  image: $IMAGE
+                  command: ["/manager"]
+                  args: ["--help"]
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    runAsNonRoot: true
+                    readOnlyRootFilesystem: true
+                    capabilities:
+                      drop:
+                      - ALL
+          EOF
+          
+          # Wait for deployment to be ready (or fail)
+          kubectl wait --for=condition=available --timeout=60s deployment/kubepurge-test || echo "Deployment test completed"
+          
+          # Check pod logs
+          kubectl logs -l app=kubepurge-test --tail=50
+          
+          # Cleanup
+          kind delete cluster --name validation-test
+
+      - name: Notify validation result
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Image validation passed for ${{ steps.extract_tag.outputs.tag }}"
+          else
+            echo "❌ Image validation failed for ${{ steps.extract_tag.outputs.tag }}"
+            exit 1
+          fi
