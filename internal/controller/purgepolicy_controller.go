@@ -156,7 +156,7 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
 	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
+		result, err := r.purgeResources(ctx, &purgepolicy)
 		if err != nil {
 			fmt.Println("error")
 		} else {
