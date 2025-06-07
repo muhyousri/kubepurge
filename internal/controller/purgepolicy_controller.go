@@ -45,11 +45,6 @@ type PurgePolicyReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 
-// TODO 2,3 fetch & Delete all resources except resources with a specific label
-func Purge_resources(input string) (output string, err error) {
-	output = input
-	return output, nil
-}
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
@@ -57,7 +52,7 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
 	if err != nil {
-
+		return ctrl.Result{}, err
 	}
 	schedule := purgepolicy.Spec.Schedule
 	resources := purgepolicy.Spec.Resources
@@ -68,14 +63,13 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
-	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			fmt.Println("error")
-		} else {
-			fmt.Printf("%v", result)
-		}
+	_, err = c.AddFunc(schedule, func() {
+		// TODO: Implement resource purging logic
+		fmt.Printf("Purging resources for policy: %s", purgepolicy.Name)
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	c.Start()
 
 	return ctrl.Result{}, nil

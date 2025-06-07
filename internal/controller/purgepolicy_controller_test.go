@@ -51,7 +51,11 @@ var _ = Describe("PurgePolicy Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: kubepurgexyzv1.PurgePolicySpec{
+						TargetNamespace: "test-namespace",
+						Schedule:        "0 0 * * *",
+						Resources:       []string{"pods", "deployments"},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
