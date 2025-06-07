@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,7 +33,8 @@ import (
 // PurgePolicyReconciler reconciles a PurgePolicy object
 type PurgePolicyReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	cronJobs map[string]*cron.Cron
 }
 
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies,verbs=get;list;watch;create;update;patch;delete
@@ -49,33 +51,56 @@ func Purge_resources(input string) (output string, err error) {
 }
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-	var purgepolicy kubepurgexyzv1.PurgePolicy
+	logger := log.FromContext(ctx)
+	
+	if r.cronJobs == nil {
+		r.cronJobs = make(map[string]*cron.Cron)
+	}
 
+	var purgepolicy kubepurgexyzv1.PurgePolicy
 	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
 	if err != nil {
-
+		if errors.IsNotFound(err) {
+			logger.Info("PurgePolicy resource not found. Stopping cron job if exists.")
+			if cronJob, exists := r.cronJobs[req.NamespacedName.String()]; exists {
+				cronJob.Stop()
+				delete(r.cronJobs, req.NamespacedName.String())
+			}
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "Unable to fetch PurgePolicy")
+		return ctrl.Result{}, err
 	}
+
 	schedule := purgepolicy.Spec.Schedule
 	resources := purgepolicy.Spec.Resources
 	targetNamespace := purgepolicy.Spec.TargetNamespace
 
-	fmt.Printf("schedule is %s, resource are %s, targetNamespace is %s", schedule, resources, targetNamespace)
+	logger.Info("Processing PurgePolicy", "schedule", schedule, "resources", resources, "targetNamespace", targetNamespace)
 
-	//
-	// TODO 1- process cron format and compare with current date [Done]
+	cronJobKey := req.NamespacedName.String()
+	
+	if existingCron, exists := r.cronJobs[cronJobKey]; exists {
+		existingCron.Stop()
+	}
+
 	c := cron.New()
-	c.AddFunc(schedule, func() {
+	_, err = c.AddFunc(schedule, func() {
 		result, err := Purge_resources(purgepolicy.Name)
 		if err != nil {
-			fmt.Println("error")
+			logger.Error(err, "Failed to purge resources")
 		} else {
-			fmt.Printf("%v", result)
+			logger.Info("Purge operation completed", "result", result)
 		}
 	})
+	
+	if err != nil {
+		logger.Error(err, "Failed to add cron job", "schedule", schedule)
+		return ctrl.Result{}, err
+	}
+	
 	c.Start()
-
-	// TODO 4- create or patch a purge status
+	r.cronJobs[cronJobKey] = c
 
 	return ctrl.Result{}, nil
 }
