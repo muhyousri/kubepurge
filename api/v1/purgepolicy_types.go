@@ -28,11 +28,18 @@ type PurgePolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of PurgePolicy. Edit purgepolicy_types.go to remove/update
-	// Foo string `json:"foo,omitempty"`
-	TargetNamespace string   `json:"targetNamespace"`
-	Schedule        string   `json:"schedule"`
-	Resources       []string `json:"resources"`
+	// +kubebuilder:validation:Required
+	// TargetNamespace is the namespace to target for resource cleanup
+	TargetNamespace string `json:"targetNamespace"`
+	
+	// +kubebuilder:validation:Required
+	// Schedule in cron format for when to run purge operations
+	Schedule string `json:"schedule"`
+	
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	// Resources is a list of resource types to purge (e.g., "pods", "deployments")
+	Resources []string `json:"resources"`
 }
 
 // PurgePolicyStatus defines the observed state of PurgePolicy.
