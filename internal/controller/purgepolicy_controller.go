@@ -44,11 +44,6 @@ type PurgePolicyReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 
-// TODO 2,3 fetch & Delete all resources except resources with a specific label
-func Purge_resources(input string) (output string, err error) {
-	output = input
-	return output, nil
-}
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
