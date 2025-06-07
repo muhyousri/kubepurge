@@ -38,15 +38,17 @@ type PurgePolicyReconciler struct {
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgepolicies/finalizers,verbs=update
+// +kubebuilder:rbac:groups=kubepurge.xyz,resources=purgestatuses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;delete
+// +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;delete
 
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 
-// TODO 2,3 fetch & Delete all resources except resources with a specific label
-func Purge_resources(input string) (output string, err error) {
-	output = input
-	return output, nil
-}
 
 func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
@@ -54,25 +56,23 @@ func (r *PurgePolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err := r.Get(ctx, req.NamespacedName, &purgepolicy)
 	if err != nil {
-
+		return ctrl.Result{}, err
 	}
 	schedule := purgepolicy.Spec.Schedule
 	resources := purgepolicy.Spec.Resources
 	targetNamespace := purgepolicy.Spec.TargetNamespace
 
-	fmt.Printf("schedule is %s, resource are %s, targetNamespace is %s", schedule, resources, targetNamespace)
+	log.FromContext(ctx).Info("Processing PurgePolicy", "schedule", schedule, "resources", resources, "targetNamespace", targetNamespace)
 
-	//
 	// TODO 1- process cron format and compare with current date [Done]
 	c := cron.New()
-	c.AddFunc(schedule, func() {
-		result, err := Purge_resources(purgepolicy.Name)
-		if err != nil {
-			fmt.Println("error")
-		} else {
-			fmt.Printf("%v", result)
-		}
+	_, err = c.AddFunc(schedule, func() {
+		log.FromContext(ctx).Info("Executing purge for policy", "policy", purgepolicy.Name)
+		// TODO: Implement actual resource purging logic
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	c.Start()
 
 	// TODO 4- create or patch a purge status
