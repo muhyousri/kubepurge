@@ -1,9 +1,0 @@
-apiVersion: kubepurge.xyz/v1
-kind: PurgeStatus
-metadata:
-  labels:
-    app.kubernetes.io/name: kubepurge
-    app.kubernetes.io/managed-by: kustomize
-  name: purgestatus-sample
-spec:
-  # TODO(user): Add fields here
